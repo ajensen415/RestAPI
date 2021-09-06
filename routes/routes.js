@@ -1,37 +1,28 @@
 'use strict';
 
 const express = require('express');
-//const bcrypt = require('bcrypt');
 
 const router = express.Router();
-const { User, Course } = rtequire('../models');
+const { User, Course } = require('../models');
+const { authenticateUser } = require('../middleware/auth-user');
 
 
 // Async Handler function
-function asyncHandler(cb) {
-    return async (req, res, next) => {
+function asyncHandler(cb){
+    return async(req, res, next) => {
       try {
-        await cb(req, res, next);
-      } catch (err) {
-        console.log(err);
-        if (
-          err.name === 'SequelizeValidationError' ||
-          err.name === 'SequelizeUniqueConstraintError'
-        ) {
-          console.log('Error:', err.name);
-          const errors = err.errors.map(err => err.message);
-          res.status(400).json({ errors });
-        } else {
-          next(err);
-        }
+        await cb(req, res, next)
+      } catch(error){
+        // Forward error to the global error handler
+        next(error);
       }
-    };
+    }
   }
 
-/*User Routes*/
+/*USER ROUTES*/
 
 // GET route to return props/values for current authentictaed User
-router.get('/users', asyncHandler(async (req, res, next) => {
+router.get('/users', authenticateUser, asyncHandler(async (req, res, next) => {
     const user = await User.findOne({
         attributes: { exclude: ['password', 'createdAt', 'updatedAt'] },
         where: { id: req.currentUser.id },
@@ -41,23 +32,37 @@ router.get('/users', asyncHandler(async (req, res, next) => {
 
 // POST route to create new User
 router.post('/users', asyncHandler(async (req, res) => {
-    const newUser = await req.body;
-    await User.create(newUser);
-    res.status(201).location('/').end();
+    try {
+        await User.create(req.body);
+        res.location('/').status(201).end();
+    } catch (error) {
+        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+            const errors = error.errors.map(err => err.message);
+            res.status(400).json({ errors });
+        } else {
+            throw error;
+        }
+    }
 }));
 
-/*Course Routes*/
+/*COURSE ROUTES*/
 
 // GET route to return all courses 
-router.get('/courses', asyncHandler(async (req, res) => {
+router.get('/courses', asyncHandler(async (req, res, next) => {
     const courses = await Course.findAll({
         attributes: { exclude: ['createdAt', 'updatedAt'] },
-        include: {
+        include: [{
             model: User,
             attributes: { exclude: ['password', 'createdAt', 'updatedAt'] },
-        },
+        }],
     });
-    res.status(200).json({ courses });
+    if (courses) {
+        res.status(200).json({ courses });
+    } else {
+        const error = new Error('Unable to locate courses, please try again.');
+        error.status = 404;
+        next(error);
+    }
 }));
 
 // GET route to return corresponding course & User
@@ -74,14 +79,27 @@ router.get('/courses/:id', asyncHandler(async (req, res) => {
 }));
 
 // POST route to create a new course 
-router.post('/courses', asyncHandler(async (req, res) => {
-    const newCourse = await Course.create(req.body);
-    res.status(201).location(`/courses/${newCourse.id}`).end();
+router.post('/courses', authenticateUser, asyncHandler(async (req, res) => {
+    try {
+        const user = req.currentUser;
+        if (user) {
+            const course = await Course.create(req.body);
+            res.location(`/courses/${course.id}`).status(201).end();
+        }
+    } catch (error) {
+        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+            const errors = error.errors.map(err => err.message);
+            res.status(400).json({ errors });
+        } else {
+            throw error;
+        }
+    }
+
 }));
 
 
 // PUT route to update course
-router.put('/courses/:id', asyncHandler(async (req, res) => {
+router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
     const course = await Course.findByPk(req.params.id);
 
     if (course) {
@@ -100,7 +118,7 @@ router.put('/courses/:id', asyncHandler(async (req, res) => {
 }));
 
 // Delete route to delete course
-router.delete('/courses/:id', asyncHandler(async (req, res) => {
+router.delete('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
     const course = await Course.findByPk(req.params.id);
 
     if (course) {
