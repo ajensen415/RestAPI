@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         }
     }
 
-    // User model including first & last name, email & password.
+    // Course model including title, description, estimatedTime & materialsNeeded
     Course.init({
         title: {
             type: DataTypes.STRING,

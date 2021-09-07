@@ -6,7 +6,6 @@ const router = express.Router();
 const { User, Course } = require('../models');
 const { authenticateUser } = require('../middleware/auth-user');
 
-
 // Async Handler function
 function asyncHandler(cb){
     return async(req, res, next) => {
@@ -21,7 +20,7 @@ function asyncHandler(cb){
 
 /*USER ROUTES*/
 
-// GET route to return props/values for current authentictaed User
+// GET route to return props/values for current authenticated User
 router.get('/users', authenticateUser, asyncHandler(async (req, res, next) => {
     const user = await User.findOne({
         attributes: { exclude: ['password', 'createdAt', 'updatedAt'] },
@@ -97,14 +96,12 @@ router.post('/courses', authenticateUser, asyncHandler(async (req, res) => {
 
 }));
 
-
 // PUT route to update course
 router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
     const course = await Course.findByPk(req.params.id);
-
     if (course) {
         if (course.userId === req.currentUser.id) {
-            awaitcourse.update({
+            await course.update({
                 title: req.body.title,
                 description: req.body.description,
             });
@@ -120,10 +117,9 @@ router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
 // Delete route to delete course
 router.delete('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
     const course = await Course.findByPk(req.params.id);
-
     if (course) {
-        if (course.userId === course.currentUser.id) {
-            await course.destroy(course);
+        if (course.userId === req.currentUser.id) {
+            await course.destroy();
             res.status(204).end();
         } else {
             res.status(403).end();
