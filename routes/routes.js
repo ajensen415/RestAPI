@@ -98,20 +98,30 @@ router.post('/courses', authenticateUser, asyncHandler(async (req, res) => {
 
 // PUT route to update course
 router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
-    const course = await Course.findByPk(req.params.id);
-    if (course) {
-        if (course.userId === req.currentUser.id) {
-            await course.update({
-                title: req.body.title,
-                description: req.body.description,
-            });
-            res.status(204).end();
+    try {
+        const course = await Course.findByPk(req.params.id);
+        if (course) {
+            if (course.userId === req.currentUser.id) {
+                await course.update({
+                    title: req.body.title,
+                    description: req.body.decription,
+                });
+                res.status(204).end();
+            } else {
+                res.status(403).end();
+            }
         } else {
-            res.status(403).end();
+            res.status(404).json({ message: 'Unable to locate course. Please try again.' });
         }
-    } else {
-        res.status(404).json({ message: 'Unable to locate course. Please try again.' });
+    } catch (error) {
+        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
+            const errors = error.errors.map(err => err.message);
+            res.status(400).json({ errors });
+        } else {
+            throw error;
+        }
     }
+
 }));
 
 // Delete route to delete course
