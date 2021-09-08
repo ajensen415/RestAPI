@@ -104,7 +104,7 @@ router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
             if (course.userId === req.currentUser.id) {
                 await course.update({
                     title: req.body.title,
-                    description: req.body.decription,
+                    description: req.body.description,
                 });
                 res.status(204).end();
             } else {
@@ -114,6 +114,7 @@ router.put('/courses/:id', authenticateUser, asyncHandler(async (req, res) => {
             res.status(404).json({ message: 'Unable to locate course. Please try again.' });
         }
     } catch (error) {
+        console.log(error);
         if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
             const errors = error.errors.map(err => err.message);
             res.status(400).json({ errors });
